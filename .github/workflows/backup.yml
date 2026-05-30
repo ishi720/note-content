@@ -1,0 +1,33 @@
+name: note バックアップ
+
+on:
+  schedule:
+    - cron: "0 15 * * *"  # 毎日 0:00 JST
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - run: python backup_note.py
+        env:
+          NOTE_USERNAME: ${{ vars.NOTE_USERNAME }}
+
+      - name: 変更をコミット & プッシュ
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add articles/ INDEX.md
+          git diff --cached --quiet || git commit -m "chore: note バックアップ $(date +'%Y-%m-%d')"
+          git push
