@@ -65,6 +65,10 @@ def fetch_article_detail(key: str) -> dict | None:
     return None
 
 
+def _strip_backup_at(content: str) -> str:
+    return re.sub(r'  <meta name="backup-at"[^\n]*\n', "", content)
+
+
 def sanitize_filename(title: str) -> str:
     """ファイル名として使えない文字を除去"""
     s = re.sub(r'[\\/:*?"<>|]', '_', title)
@@ -135,7 +139,7 @@ def backup(username: str):
 
             if filepath.exists():
                 existing = filepath.read_text(encoding="utf-8")
-                if existing == content:
+                if _strip_backup_at(existing) == _strip_backup_at(content):
                     print(f"  → 変更なし、スキップ")
                     time.sleep(SLEEP_SEC)
                     continue
@@ -158,9 +162,8 @@ def backup(username: str):
 
 def write_index(articles: list[dict]):
     """記事一覧のインデックスMarkdownを生成"""
-    lines = [
+    rows = [
         "# note バックアップ 記事一覧\n",
-        f"最終更新: {datetime.now().strftime('%Y-%m-%d %H:%M')} JST\n",
         f"総記事数: {len(articles)} 件\n\n",
         "| タイトル | 公開日 | いいね |\n",
         "|---------|--------|-------|\n",
@@ -171,9 +174,18 @@ def write_index(articles: list[dict]):
         published = a.get("publishAt", "")[:10]
         likes = a.get("likeCount", 0)
         filename = f"{sanitize_filename(title)}__{key}.html"
-        lines.append(f"| [{title}](articles/{filename}) | {published} | {likes} |\n")
+        rows.append(f"| [{title}](articles/{filename}) | {published} | {likes} |\n")
 
-    (Path(".") / "INDEX.md").write_text("".join(lines), encoding="utf-8")
+    index_path = Path(".") / "INDEX.md"
+    body = "".join(rows)
+
+    if index_path.exists():
+        existing = index_path.read_text(encoding="utf-8")
+        if existing == body:
+            print("\n📋  INDEX.md 変更なし、スキップ")
+            return
+
+    index_path.write_text(body, encoding="utf-8")
     print("\n📋  INDEX.md を更新しました")
 
 
