@@ -137,6 +137,12 @@ def backup(username: str):
             filename = f"{sanitize_filename(title)}__{key}.html"
             filepath = OUTPUT_DIR / filename
 
+            # タイトル変更で別名になった旧バックアップがあれば改名して引き継ぐ
+            for old in OUTPUT_DIR.glob(f"*__{key}.html"):
+                if old != filepath:
+                    old.replace(filepath)
+                    print(f"  → 改名: {old.name} → {filename}")
+
             if filepath.exists():
                 existing = filepath.read_text(encoding="utf-8")
                 if _strip_backup_at(existing) == _strip_backup_at(content):
